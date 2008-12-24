@@ -60,7 +60,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       end
 
       should "use override name" do
-        assert_dom_equal "<input name='photo[something_else_attributes][new][0][author]' size='30' type='text' id='photo_something_else_attributes__new__0_author' />", @erbout
+        assert_dom_equal "<input name='photo[something_else_attributes][new][0][author]' size='30' type='text' id='photo_something_else_attributes_new_0_author' />", @erbout
       end
     end
   end
