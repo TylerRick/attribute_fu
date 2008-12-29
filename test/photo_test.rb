@@ -8,10 +8,9 @@ class PhotoTest < ActiveSupport::TestCase
       setup do
         create_photo_and_children
       
-        @photo.comment_attributes = { @gob.id.to_s => { :author => "Buster Bluth", :body => "I said it was _our_ nausia..." },
+        @photo.comment_attributes = { @gob.id.to_s => {          :author => "Buster Bluth",   :body => "I said it was _our_ nausia..." },
                                       :new         => { "0" => { :author => "George-Michael", :body => "I was going to smoke the marijuana like a ciggarette." },
-                                                        "-1" => { :author => "Tobias Funke", :body => "I am an actor! An actor for crying out loud!" }}}
-      
+                                                       "-1" => { :author => "Tobias Funke",   :body => "I am an actor! An actor for crying out loud!" }}}
       end
     
       context "before save" do
@@ -21,6 +20,15 @@ class PhotoTest < ActiveSupport::TestCase
       
         should "not have saved any new objects" do
           assert @photo.comments.any? { |comment| comment.new_record? }
+        end
+
+        should "update attributes of associated models in memory" do
+          assert_equal "Buster Bluth",                  @photo.comments.detect {|comment| comment.id == @gob.id}.author, "Author attribute of child model was not updated."
+          assert_equal "I said it was _our_ nausia...", @photo.comments.detect {|comment| comment.id == @gob.id}.body,   "Body attribute of child model was not updated."
+        end
+
+        should "not, however, have saved new attributes of associated models" do
+          assert_equal "Gob Bluth", @gob.reload.author, "Author attribute of child model was saved but should not have been."
         end
       end
     
@@ -35,8 +43,8 @@ class PhotoTest < ActiveSupport::TestCase
           end
 
           should "update attributes" do
-            assert_equal "Buster Bluth", @gob.author, "Author attribute of child model was not updated."
-            assert_equal "I said it was _our_ nausia...", @gob.body, "Body attribute of child model was not updated."
+            assert_equal "Buster Bluth",                  @gob.author, "Author attribute of child model was not updated."
+            assert_equal "I said it was _our_ nausia...", @gob.body,   "Body attribute of child model was not updated."
           end
         end
     
@@ -87,7 +95,7 @@ class PhotoTest < ActiveSupport::TestCase
         
         teardown do
           Photo.class_eval do
-            managed_association_attributes[:comments].delete(:discard_if)
+            attribute_fu_has_many_options[:comments].delete(:discard_if)
           end
         end
 
@@ -107,7 +115,7 @@ class PhotoTest < ActiveSupport::TestCase
         
         teardown do
           Photo.class_eval do
-            managed_association_attributes[:comments].delete(:discard_if)
+            attribute_fu_has_many_options[:comments].delete(:discard_if)
           end
         end
         

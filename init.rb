@@ -1,4 +1,5 @@
-ActiveRecord::Base.class_eval { include AttributeFu::Associations }
+ActiveRecord::Base.class_eval { include AttributeFu::Associations::Singular }
+ActiveRecord::Base.class_eval { include AttributeFu::Associations::HasMany }
 ActionView::Helpers::FormBuilder.class_eval { include AttributeFu::AssociatedFormHelper }
 
 unless defined?('RAILS_ROOT')

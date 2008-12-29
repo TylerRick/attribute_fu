@@ -10,7 +10,8 @@ require 'mocha'
 require 'shoulda/rails'
 
 require 'attribute_fu'
-require 'attribute_fu/associations'
+require 'attribute_fu/associations/singular'
+require 'attribute_fu/associations/has_many'
 require 'attribute_fu/associated_form_helper'
 require plugin_test_dir + '/../init.rb'
 

@@ -1,37 +1,20 @@
 module AttributeFu
   module Associations #:nodoc:
-    module HasMany
-    
-    def self.included(base) #:nodoc:
-      base.class_eval do
-        extend ClassMethods
-        class << self; alias_method_chain :has_many, :association_option; end
-        
-        class_inheritable_accessor  :managed_association_attributes
-        write_inheritable_attribute :managed_association_attributes, {}
-        
-        after_update :save_managed_associations
-      end
-    end
-    
-    def method_missing(method_name, *args) #:nodoc:
-      if method_name.to_s =~ /.+?\_attributes=/
-        association_name = method_name.to_s.gsub '_attributes=', ''
-        association      = managed_association_attributes.keys.detect { |element| element == association_name.to_sym } || managed_association_attributes.keys.detect { |element| element == association_name.pluralize.to_sym }
-        
-        unless association.nil?
-          has_many_attributes association, args.first
+    module HasMany #:nodoc:
+      
+      def self.included(base) #:nodoc:
+        base.class_eval do
+          extend ClassMethods
+          class << self; alias_method_chain :has_many, :attributes_option; end
           
-          return
+          class_inheritable_accessor  :attribute_fu_has_many_options
+          write_inheritable_attribute :attribute_fu_has_many_options, {}
         end
       end
       
-      super
-    end
-    
     private
-      def has_many_attributes(association_id, attributes) #:nodoc:
-        association = send(association_id)
+      def update_has_many_from_attributes(association_name, attributes) #:nodoc:
+        association = send(association_name)
         attributes = {} unless attributes.is_a? Hash
 
         attributes.symbolize_keys!
@@ -47,92 +30,88 @@ module AttributeFu
         end
         
         attributes.stringify_keys!        
-        instance_variable_set removal_variable_name(association_id), association.reject { |object| object.new_record? || attributes.has_key?(object.id.to_s) }.map(&:id)
+        instance_variable_set removal_variable_name(association_name), association.reject { |object| object.new_record? || attributes.has_key?(object.id.to_s) }.map(&:id)
         attributes.each do |id, object_attrs|
           object = association.detect { |associated| associated.id.to_s == id }
           object.attributes = object_attrs unless object.nil?
         end
         
         # discard blank attributes if discard_if proc exists
-        unless (discard = managed_association_attributes[association_id][:discard_if]).nil?
+        unless (discard = attribute_fu_has_many_options[association_name][:discard_if]).nil?
           association.reject! { |object| object.new_record? && discard.call(object) }
           association.delete(*association.select { |object| discard.call(object) })
         end
       end
       
-      def save_managed_associations #:nodoc:
-        if managed_association_attributes != nil
-          managed_association_attributes.keys.each do |association_id|
-            if send(association_id).loaded? # don't save what we haven't even loaded
-              association = send(association_id)
+      def save_attribute_fu_has_many_associations #:nodoc:
+        if attribute_fu_has_many_options != nil
+          attribute_fu_has_many_options.keys.each do |association_name|
+            if send(association_name).loaded? # don't save what we haven't even loaded
+              association = send(association_name)
               association.each(&:save)
 
-              unless (objects_to_remove = instance_variable_get removal_variable_name(association_id)).nil?
+              unless (objects_to_remove = instance_variable_get removal_variable_name(association_name)).nil?
                 objects_to_remove.each { |remove_id| association.delete association.detect { |obj| obj.id.to_s == remove_id.to_s } }
-                instance_variable_set removal_variable_name(association_id), nil
+                instance_variable_set removal_variable_name(association_name), nil
               end
             end
           end
         end
       end
       
-      def removal_variable_name(association_id) #:nodoc:
-        "@#{association_id.to_s.pluralize}_to_remove"
+      def removal_variable_name(association_name) #:nodoc:
+        "@#{association_name.to_s.pluralize}_to_remove"
       end
     
-    module ClassMethods
-      
-      # Behaves identically to the regular has_many, except adds the option <tt>:attributes</tt>, which, if true, creates
-      # a method called association_id_attributes (i.e. task_attributes, or comment_attributes) for setting the attributes
-      # of a collection of associated models. 
-      #
-      # It also adds the option <tt>:discard_if</tt>, which accepts a proc or a symbol. If the proc evaluates to true, the 
-      # child model will be discarded. The symbol is sent as a message to the child model instance; if it returns true,
-      # the child model will be discarded.
-      # 
-      # e.g.
-      #
-      #   :discard_if => proc { |comment| comment.title.blank? }
-      #     or
-      #   :discard_if => :blank? # where blank is defined in Comment
-      #  
-      #
-      # The format is as follows:
-      #
-      #     @project.task_attributes = {
-      #       @project.tasks.first.id => {:title => "A new title for an existing task"},
-      #       :new => {
-      #         "0" => {:title => "A new task"}
-      #       }
-      #     }
-      #
-      # Any existing tasks that are not present in the attributes hash will be removed from the association when the (parent) model
-      # is saved.
-      #
-      def has_many_with_association_option(association_id, options = {}, &extension)
-        unless (config = options.delete(:attributes)).nil?
-          managed_association_attributes[association_id] = {}
-          if options.has_key?(:discard_if)
-            discard_if = options.delete(:discard_if)
-            discard_if = discard_if.to_proc if discard_if.is_a?(Symbol)
-            managed_association_attributes[association_id][:discard_if] = discard_if
+      module ClassMethods
+        
+        # Behaves identically to the regular has_many, except adds the option <tt>:attributes</tt>, which, if true, creates
+        # a method called association_name_attributes (i.e. task_attributes, or comment_attributes) for setting the attributes
+        # of a collection of associated models. 
+        #
+        # It also adds the option <tt>:discard_if</tt>, which accepts a proc or a symbol. If the proc evaluates to true, the 
+        # child model will be discarded. The symbol is sent as a message to the child model instance; if it returns true,
+        # the child model will be discarded.
+        # 
+        # e.g.
+        #
+        #   :discard_if => proc { |comment| comment.title.blank? }
+        #     or
+        #   :discard_if => :blank? # where blank is defined in Comment
+        #  
+        #
+        # The format is as follows:
+        #
+        #     @project.task_attributes = {
+        #       @project.tasks.first.id => {:title => "A new title for an existing task"},
+        #       :new => {
+        #         "0" => {:title => "A new task"}
+        #       }
+        #     }
+        #
+        # Any existing tasks that are not present in the attributes hash will be removed from the association when the (parent) model
+        # is saved.
+        #
+        def has_many_with_attributes_option(association_name, options = {}, &extension)
+          unless (config = options.delete(:attributes)).nil?
+            attribute_fu_has_many_options[association_name] = {}
+            if options.has_key?(:discard_if)
+              discard_if = options.delete(:discard_if)
+              discard_if = discard_if.to_proc if discard_if.is_a?(Symbol)
+              attribute_fu_has_many_options[association_name][:discard_if] = discard_if
+            end
+            define_method("#{association_name.to_s.singularize}_attributes=") do |attributes|
+              update_has_many_from_attributes association_name, attributes
+            end
+            after_update :save_attribute_fu_has_many_associations
           end
-          collection_with_attributes_writer(association_id)
+          
+          has_many_without_attributes_option(association_name, options, &extension)
         end
         
-        has_many_without_association_option(association_id, options, &extension)
-      end
-      
-    private
+      end # ClassMethods
     
-      def collection_with_attributes_writer(association_name)
-        define_method("#{association_name.to_s.singularize}_attributes=") do |attributes|
-          has_many_attributes association_name, attributes
-        end
-      end
-      
-    end
-    
-  end # HasMany
+    end # HasMany
   end # Associations
 end # AttributeFu
+
