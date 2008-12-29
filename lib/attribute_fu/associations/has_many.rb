@@ -1,5 +1,6 @@
 module AttributeFu
   module Associations #:nodoc:
+    module HasMany
     
     def self.included(base) #:nodoc:
       base.class_eval do
@@ -132,5 +133,6 @@ module AttributeFu
       
     end
     
+  end # HasMany
   end # Associations
 end # AttributeFu
