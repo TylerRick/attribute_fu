@@ -1,0 +1,19 @@
+<% form_for(@project) do |f| %>
+  <%= f.error_messages %>
+
+  <p>
+    <%= f.label :name %><br />
+    <%= f.text_field :name %>
+  </p>
+
+  <fieldset id="tasks">
+    <legend>Associated tasks</legend>
+    <%= f.render_associated_form((@project.tasks), :new => 3) %>
+  </fieldset>
+  <%= f.add_associated_link "Add New Task", @project.tasks.build %>
+
+  <p>
+    <%= f.submit "Save" %>
+  </p>
+<% end %>
+

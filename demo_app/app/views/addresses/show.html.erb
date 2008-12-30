@@ -1,0 +1,18 @@
+<p>
+  <b>Addressable:</b>
+  <%=h @address.addressable %>
+</p>
+
+<p>
+  <b>Line1:</b>
+  <%=h @address.line1 %>
+</p>
+
+<p>
+  <b>City:</b>
+  <%=h @address.city %>
+</p>
+
+
+<%= link_to 'Edit', edit_address_path(@address) %> |
+<%= link_to 'Back', addresses_path %>

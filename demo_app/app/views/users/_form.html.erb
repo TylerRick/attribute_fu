@@ -1,0 +1,17 @@
+<% form_for(@user) do |f| %>
+  <%= f.error_messages %>
+
+  <p>
+    <%= f.label :name %><br />
+    <%= f.text_field :name %>
+  </p>
+
+  <fieldset>
+    <legend>Associated address</legend>
+    <%= f.render_associated_form(@user.address || @user.build_address) %>
+  </fieldset>
+
+  <p>
+    <%= f.submit "Save" %>
+  </p>
+<% end %>
