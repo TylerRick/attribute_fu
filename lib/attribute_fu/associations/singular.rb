@@ -71,7 +71,7 @@ module AttributeFu
         
         # Behaves identically to the regular has_one, except adds the option <tt>:attributes</tt>, which, if true, creates
         # a method called <association_name>_attributes (i.e. address_attributes, or beneficiary_attributes) for setting the attributes
-        # of an associated model. 
+        # of an associated model.
         #
         # So instead of calling build_<model> or (if it already exists) calling attributes=/update_attributes on the existing associated model,
         # you can simply call <model>_attributes= on the parent model:
@@ -92,19 +92,30 @@ module AttributeFu
         def has_one_with_attributes_option(association_name, options = {}, &extension)
           if !(config = options.delete(:attributes)).nil?
             attribute_fu_has_one_options[association_name] = {}
-            define_method("#{association_name.to_s}_attributes=") do |attributes|
+            define_method("#{association_name}_attributes=") do |attributes|
               update_has_one_from_attributes association_name, attributes
             end
             after_update :save_attribute_fu_singular_associations
           end
           
           has_one_without_attributes_option(association_name, options, &extension)
+
+          if !(config = options.delete(:auto_build)).nil?
+            class_eval <<-EOS, __FILE__, __LINE__
+              def #{association_name}_with_auto_build(*args)
+                ret = #{association_name}_without_auto_build(*args)
+                puts "#{association_name}_without_auto_build returned \#{ret}"
+                ret or build_#{association_name}
+              end
+            EOS
+            alias_method_chain "#{association_name}", :auto_build
+          end
         end
 
         def belongs_to_with_attributes_option(association_name, options = {}, &extension)
           if !(config = options.delete(:attributes)).nil?
             attribute_fu_belongs_to_options[association_name] = {}
-            define_method("#{association_name.to_s}_attributes=") do |attributes|
+            define_method("#{association_name}_attributes=") do |attributes|
               update_belongs_to_from_attributes association_name, attributes
             end
             after_update :save_attribute_fu_singular_associations

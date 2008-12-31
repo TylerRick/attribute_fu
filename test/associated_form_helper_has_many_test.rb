@@ -1,6 +1,6 @@
 require File.dirname(__FILE__)+'/test_helper'
 
-class AssociatedFormHelperTest < Test::Unit::TestCase
+class AssociatedFormHelperHasManyTest < Test::Unit::TestCase
   include ActionView::Helpers::FormHelper
   include ActionView::Helpers::FormTagHelper
   include ActionView::Helpers::UrlHelper
@@ -20,19 +20,18 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
     context "with existing object" do
       setup do
         @photo.comments.create :author => "Barry", :body => "Oooh I did good today..."
-
-        @erbout = assoc_output @photo.comments.first
+        @erbout = fields_for_associated(@photo.comments.first)
       end
 
       should "name field with attribute_fu naming conventions" do
-        assert_match "photo[comment_attributes][#{@photo.comments.first.id}]", @erbout
+        assert_match %{"photo[comment_attributes][#{@photo.comments.first.id}][author]"}, @erbout
       end
     end
 
     context "with non-existent object" do
-      setup do      
-        @erbout = assoc_output(@photo.comments.build) do |f|
-          f.fields_for_associated(@photo.comments.build) do |comment|
+      setup do
+        @erbout = fields_for_associated(@photo.comments.build) do |f|
+          f.fields_for_associated_collection(@photo.comments.build) do |comment|
             comment.text_field(:author)
           end
         end
@@ -51,7 +50,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       setup do
         _erbout = ''
         fields_for(:photo) do |f|
-          f.fields_for_associated(@photo.comments.build, :name => :something_else) do |comment|
+          f.fields_for_associated_collection(@photo.comments.build, :name => :something_else) do |comment|
             _erbout.concat comment.text_field(:author)
           end
         end
@@ -110,7 +109,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
     setup do
       _erbout = ''
       fields_for(:photo) do |f|
-        _erbout.concat(f.fields_for_associated(@photo.comments.build, :javascript => true) do |comment|
+        _erbout.concat(f.fields_for_associated_collection(@photo.comments.build, :javascript => true) do |comment|
           comment.text_field(:author)
         end)
       end
@@ -129,7 +128,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:render_associated_form).with(comment, :fields_for => {:javascript => true}, :partial => 'comment')
+        f.stubs(:render_associated_form).with([comment], :fields_for => {:javascript => true}, :partial => 'comment')
         _erbout.concat f.add_associated_link("Add Comment", comment, :class => 'something')
       end
       
@@ -171,7 +170,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:render_associated_form).with(comment, :fields_for => {:javascript => true}, :partial => 'some_other_partial')
+        f.stubs(:render_associated_form).with([comment], :fields_for => {:javascript => true}, :partial => 'some_other_partial')
         _erbout.concat f.add_associated_link("Add Comment", comment, :container => '#something_comments', :partial => 'some_other_partial')
       end
       
@@ -205,38 +204,38 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
   
   #   setup do
   #     comment = @photo.comments.build
-  #     
+  #
   #     _erbout = ''
   #     fields_for(:photo) do |f|
   #       f.stubs(:render_associated_form).with(comment, :fields_for => {:javascript => true}, :partial => 'some_other_partial')
   #       _erbout.concat f.add_associated_link("Add Comment", comment, :expression => '$(this).up(".something_comments")', :partial => 'some_other_partial')
   #     end
-  #     
+  #
   #     @erbout = _erbout
   #   end
-  # 
+  #
   #   should "create link" do
   #     assert_match ">Add Comment</a>", @erbout
   #   end
-  #   
+  #
   #   should "use the javascript expression provided instead of passing the ID in" do
   #     assert_match "$.template($(this).up(&quot;.something_comments&quot;)", @erbout
   #   end
-  #   
+  #
   #   should "wrap the partial in a JQ template" do
   #     assert_match "$.template", @erbout
   #   end
-  #   
+  #
   #   should "name the variable correctly" do
   #     assert_match "attribute_fu_comment_count", @erbout
   #   end
-  #   
+  #
   #   should "produce the following link" do
   #     # this is a way of testing the whole link
   #     assert_equal %{
   #       <a href=\"#\" onclick=\"if (typeof attribute_fu_comment_count == 'undefined') attribute_fu_comment_count = 0;\nnew Insertion.Bottom($(this).up(&quot;.something_comments&quot;), new Template(null).evaluate({'number': --attribute_fu_comment_count})); return false;\">Add Comment</a>
   #     }.strip, @erbout
-  #   end    
+  #   end
   # end
   
   context "render_associated_form" do
@@ -247,9 +246,9 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:fields_for_associated).yields(associated_form_builder)
+        f.stubs(:fields_for_associated_collection).yields(associated_form_builder)
         expects(:render).with(:partial => "comment", :locals => { :comment => comment, :f => associated_form_builder })
-        _erbout.concat f.render_associated_form(comment).to_s
+        _erbout.concat f.render_associated_form([comment]).to_s
       end
       
       @erbout = _erbout
@@ -268,9 +267,9 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:fields_for_associated).yields(associated_form_builder)
+        f.stubs(:fields_for_associated_collection).yields(associated_form_builder)
         expects(:render).with(:partial => "somewhere/something.html.erb", :locals => { :something => comment, :f => associated_form_builder })
-        _erbout.concat f.render_associated_form(comment, :partial => "somewhere/something.html.erb").to_s
+        _erbout.concat f.render_associated_form([comment], :partial => "somewhere/something.html.erb").to_s
       end
       
       @erbout = _erbout
@@ -292,7 +291,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:fields_for_associated).yields(associated_form_builder)
+        f.stubs(:fields_for_associated_collection).yields(associated_form_builder)
         expects(:render).with(:partial => "comment", :locals => { :comment => new_comment, :f => associated_form_builder })
         _erbout.concat f.render_associated_form(@photo.comments, :new => 3).to_s
       end
@@ -317,7 +316,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:fields_for_associated).yields(associated_form_builder)
+        f.stubs(:fields_for_associated_collection).yields(associated_form_builder)
         expects(:render).with(:partial => "comment", :locals => { :comment => new_comment, :f => associated_form_builder })
         _erbout.concat f.render_associated_form(@photo.comments, :new => 3).to_s
       end
@@ -337,7 +336,7 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
       
       _erbout = ''
       fields_for(:photo) do |f|
-        f.stubs(:fields_for_associated).with(comment, :name => 'something_else').yields(associated_form_builder)
+        f.stubs(:fields_for_associated_collection).with(comment, :name => 'something_else').yields(associated_form_builder)
         expects(:render).with(:partial => "something_else", :locals => { :something_else => comment, :f => associated_form_builder })
         _erbout.concat f.render_associated_form(@photo.comments, :name => :something_else).to_s
       end
@@ -350,25 +349,25 @@ class AssociatedFormHelperTest < Test::Unit::TestCase
     end
   end
   
-  private
-    def assoc_output(comment, &block)
-      _erbout = ''
-      fields_for(:photo) do |f|
-        _erbout.concat(f.fields_for_associated(comment) do |comment|
-          comment.text_field(:author)
-        end)
-        
-        _erbout.concat yield(f) if block_given?
-      end
+private
+  def fields_for_associated(object, &block)
+    _erbout = ''
+    fields_for(:photo) do |f|
+      _erbout.concat(f.fields_for_associated_collection(object) do |f2|
+        f2.text_field(:author)
+      end)
       
-      _erbout
+      _erbout.concat yield(f) if block_given?
     end
     
-    def remove_link(*args)
-      @erbout = assoc_output(@photo.comments.build) do |f|
-        f.fields_for_associated(@photo.comments.build) do |comment|
-          comment.remove_link *args
-        end
+    _erbout
+  end
+  
+  def remove_link(*args)
+    @erbout = fields_for_associated(@photo.comments.build) do |f|
+      f.fields_for_associated_collection(@photo.comments.build) do |comment|
+        comment.remove_link *args
       end
     end
+  end
 end
